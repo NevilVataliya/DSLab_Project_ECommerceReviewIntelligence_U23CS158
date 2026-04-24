@@ -9,6 +9,16 @@ This project combines large-scale data processing, feature engineering, model be
 
 ---
 
+## Project Team
+
+| Name | GitHub |
+|---|---|
+| Nevil Vataliya | [NevilVataliya](https://github.com/NevilVataliya) |
+| Prankit Vishwakarma| [prank-vish](https://github.com/prank-vish) |
+| Parth Modi | [parthm2005](https://github.com/parthm2005) |
+
+---
+
 ## 1. Project Overview
 
 Online reviews contain two high-value signals:
@@ -22,6 +32,24 @@ This project addresses both with a **dual-pipeline architecture**:
 - **Pipeline B (Helpfulness):** predicts normalized helpfulness (`vote_rate`) and handles missing metadata using fallback models.
 
 The full workflow is built around the Amazon Electronics review data (`Electronics.json`) and engineered for high-volume processing.
+
+### 1.1 Business Problems Solved
+
+Problem 1: Review relevance and ranking
+- Not all reviews are equally useful.
+- Helpful reviews can be buried under low-quality reviews.
+- Goal: predict helpfulness at posting time for dynamic sorting.
+
+Problem 2: Sentiment understanding at scale
+- Review text is unstructured and hard to interpret manually.
+- Brands need precise signals of what customers like/dislike.
+- Goal: classify semantic tone as Positive, Neutral, or Negative.
+
+### 1.2 Scale Snapshot
+
+- Raw source: 12GB+ Amazon Electronics JSON dataset
+- Memory-safe chunking: 1,000,000 rows per chunk
+- Processed and sampled output for modeling: 2.6M+ rows
 
 ---
 
@@ -106,6 +134,7 @@ Notebook: `source_code/sentiment_analysis.ipynb`
 	- confidence filtering on BERT-rerouted subset
 	- consistency constraints for Neutral labels
 - Class balancing before final training
+- DistilBERT conflict-audit stage (presentation result): reduced false 1-star positive conflicts from about 63k to about 11k
 
 ### 5.3 Vectorization and Models
 
@@ -151,6 +180,7 @@ Notebook: `source_code/voting_prediction.ipynb`
 	- helpful (`vote >= 2`) retained
 	- unhelpful (`vote < 2`) downsampled (`frac=0.05`)
 - Initial sampled dataset output: **2,656,789 rows**
+- Severe sparsity addressed: about 76% of reviews have zero votes, so aggressive class-aware downsampling was used to reduce the accuracy paradox
 
 ### 6.2 Feature Engineering
 
@@ -238,6 +268,9 @@ Saved artifact from this pipeline:
 
 File: `source_code/app.py`
 
+Live deployment:
+- https://ecom-review-intelligence.streamlit.app
+
 The app exposes two modes:
 
 1. **Sentiment Analyzer (NLP)**
@@ -255,22 +288,24 @@ The app exposes two modes:
 
 ---
 
-## 8. Visual Outputs (Screenshots)
+## 8. Visual Outputs (Structured by Problem Statement)
 
-### Sentiment Distribution and Rating Alignment
+### 8.1 PS2 - Sentiment Classifier (Pipeline A)
+
+#### Sentiment Distribution and Rating Alignment
 
 ![Sentiment Distribution](screenshots/image.png)
 ![Rating vs Sentiment](screenshots/output.png)
 ![Rating vs Final Tone](screenshots/eda_plot_03.png)
 
-### Sentiment Model Diagnostics
+#### Sentiment Model Diagnostics
 
 ![Top LightGBM Terms](screenshots/eda_plot_05.png)
 ![LightGBM Confusion Matrix](screenshots/eda_plot_06.png)
 ![Ensemble Confusion Matrix](screenshots/eda_plot_07.png)
 ![Random Forest Importance in Ensemble](screenshots/eda_plot_08.png)
 
-### General EDA
+#### Additional Sentiment EDA
 
 ![Review Length vs Star Rating](screenshots/eda_plot_09.png)
 ![Sentiment Label Count and Score Density](screenshots/eda_plot_10.png)
@@ -280,10 +315,21 @@ The app exposes two modes:
 ![Feature Correlation Heatmap](screenshots/eda_plot_15.png)
 ![Top Reviewed Products](screenshots/eda_plot_16.png)
 
-### Length-Wise Accuracy Comparison
+#### Length-Wise Accuracy Comparison
 
 ![LightGBM Accuracy vs Review Length](screenshots/eda_plot_19.png)
 ![Ensemble Accuracy vs Review Length](screenshots/eda_plot_22.png)
+
+### 8.2 PS1 - Helpfulness Predictor (Pipeline B)
+
+#### Helpfulness EDA and Feature Insights
+
+![Average Helpful Votes per Star Rating](screenshots/eda_plot_1_1.png)
+![Formatting Effort: Paragraphs vs Average Votes](screenshots/eda_plot_1_2.png)
+![Controversy Effect: Rating Deviation vs Votes](screenshots/eda_plot_1_3.png)
+![Spearman Correlation Matrix of Final Features](screenshots/eda_plot_1_4.png)
+![Word Clouds: Helpful vs Unhelpful Reviews](screenshots/eda_plot_1_5.png)
+![Final Feature Importance (8-Feature Optimal Diet)](screenshots/eda_plot_1_6.png)
 
 ---
 
@@ -340,4 +386,59 @@ This project demonstrates practical ML engineering for review intelligence at sc
 - explainable visual diagnostics
 - empirical model comparison and tuning
 - deployment-aware design (cold-start routing and user-facing app)
+
+---
+
+## 12. Comparison with Existing Work
+
+Reference paper:
+- **Were You Helpful - Predicting Helpful Votes from Amazon Reviews**
+
+Reference direction:
+- Focused on helpfulness prediction only
+- Primarily metadata-driven modeling
+
+Our project direction:
+- Unified dual-pipeline system covering both helpfulness and sentiment
+- Combines metadata with NLP/text-derived signals
+- Deploys real-time routing for cold-start scenarios
+- Produces both business outputs: vote-rate prediction and semantic sentiment classification
+
+---
+
+## 13. Challenges, Limitations, and Future Work
+
+### 13.1 Key Challenges
+
+- Sarcasm and implicit sentiment in review text
+- Ambiguous language and mixed polarity statements
+- Extreme class sparsity in helpfulness targets
+- Large-volume ingestion and feature generation cost
+
+### 13.2 Current Limitations
+
+- Sentiment labels partially depend on rating-linked heuristics and can carry noise
+- Helpfulness ceiling in lab metrics suggests missing behavioral signals (for example, impressions/click-through/session data)
+- Fallback ablation indicates platform bias toward high-reputation users and weaker pure-text-only helpfulness prediction
+
+### 13.3 Future Improvements
+
+- Replace TF-IDF + VADER components with stronger LLM or transformer-based semantic modeling
+- Add explicit review-quality scoring and learning-to-rank objectives
+- Introduce richer online signals where available to improve ranking fidelity
+- Improve sarcasm-aware sentiment handling with context-sensitive encoders
+
+---
+
+## 14. Conclusion and Demo
+
+This project converts large, raw e-commerce review streams into a practical decision engine for:
+
+- **Customer insight** via semantic sentiment classification
+- **Predictive sorting** via helpfulness estimation at post time
+
+The Streamlit application demonstrates both pipelines interactively on live inputs, including dynamic fallback routing for cold-start cases.
+
+Live demo URL:
+- https://ecom-review-intelligence.streamlit.app
 
